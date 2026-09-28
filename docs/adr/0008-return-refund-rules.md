@@ -1,0 +1,15 @@
+# ADR-0008: Return/refund rules
+- Status: Accepted (2026-09-28)
+- Decision:
+  - Window is anchored on `delivered_at`, condition `< 30` days, counted in the store timezone.
+  - Refunds are released only after warehouse inspection (`inspection_passed`).
+  - The $50 threshold is aggregated per order, to prevent splitting refund requests.
+  - Exchanges only to a same-price variant (MVP).
+- Amendment (2026-09-28):
+  - Same-price rule applies only to `same_category` exchanges (compare current list prices). `same_product` exchanges (size/color swap) have no price check, so sale buyers can swap size. Exchanges are not subject to the $50 limit.
+  - The per-order aggregate uses `committed_refunds_cents` (all non-rejected returns, including pending) and `committed_returned_qty` on the same rule, so pending requests cannot be split or duplicated.
+  - Defect claims are never auto-approved or auto-denied. A defective item is INELIGIBLE only when it is not delivered or the qty is exceeded. Soft failures listed in `cfg.defect.bypass_reasons` (window, category) and exchange-check failures are recorded as reasons for the reviewer, and the item goes to human review (`NEED_MANAGER`). Replacing a defective item with the same variant is always in scope, even for `exchange: none` categories.
+  - When an item is denied only for bypassable reasons and no condition was given, the reply must invite the customer to report a defect (guardrail-enforced). The denial has no side effects, and a defect report triggers re-evaluation.
+  - Warehouse inspection of defect returns verifies the defect, not "good condition".
+  - An unknown category fails closed toward human review (`UNKNOWN_CATEGORY`), not toward DENY.
+- Consequences: The bot auto-approves the RMA; "good condition" is verified at the warehouse.
