@@ -1,0 +1,15 @@
+[project]
+name = "dtc-policy"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = ["dtc-contracts", "pydantic>=2.8", "pyyaml>=6"]
+
+[tool.uv.sources]
+dtc-contracts = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dtc_policy"]

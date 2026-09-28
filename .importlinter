@@ -1,0 +1,27 @@
+[importlinter]
+root_packages =
+    dtc_contracts
+    dtc_policy
+include_external_packages = True
+
+[importlinter:contract:contracts-is-leaf]
+name = dtc_contracts does not import other dtc packages
+type = forbidden
+source_modules =
+    dtc_contracts
+forbidden_modules =
+    dtc_policy
+
+[importlinter:contract:policy-is-pure]
+name = dtc_policy has no I/O dependencies
+type = forbidden
+source_modules =
+    dtc_policy
+forbidden_modules =
+    sqlalchemy
+    asyncpg
+    redis
+    httpx
+    fastapi
+    pydantic_ai
+    logfire

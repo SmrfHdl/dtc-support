@@ -1,7 +1,52 @@
 [project]
 name = "dtc-support"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
 requires-python = ">=3.13"
 dependencies = []
+
+[dependency-groups]
+dev = [
+    "dtc-contracts",
+    "dtc-policy",
+    "pytest>=8",
+    "pytest-cov>=5",
+    "hypothesis>=6",
+    "ruff>=0.6",
+    "pyright>=1.1.380",
+    "import-linter>=2.1",
+    "types-pyyaml",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+dtc-contracts = { workspace = true }
+dtc-policy = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "N", "PT", "DTZ"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dtc_contracts", "dtc_policy"]
+
+[tool.pyright]
+include = ["packages"]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["packages"]
+addopts = ["--import-mode=importlib", "--strict-markers"]
+
+[tool.coverage.report]
+show_missing = true
