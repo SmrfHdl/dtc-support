@@ -252,6 +252,11 @@ CLI: `datagen --seed 42 --customers 2000 --orders 5000 --now 2026-09-28T12:00:00
 
 - Per-route fault injection via env: `MOCK_LATENCY_P50_MS`, `MOCK_LATENCY_P99_MS`, `MOCK_ERROR_RATE`.
 - Every request is written to `audit_log`.
+- **Concurrency re-check on writes.** The policy decides on a snapshot, so two requests arriving together (two tabs, double submit) can both be approved before either return is written. `Idempotency-Key` does not help, because they are different requests. `POST /returns` and `POST /refunds` must therefore re-check inside one transaction, locking the order's `order_items` rows (`SELECT … FOR UPDATE`):
+  - requested qty ≤ `qty − committed_returned_qty` for every item;
+  - `committed_refunds_cents + new amount < auto_limit_cents` unless the refund is manager-approved.
+  - On violation → `409 Conflict`, nothing written. Handling 409 (rebuild the snapshot, call `evaluate` again) is orchestrator work in P1.
+  - Test: two concurrent `POST /returns` for the last remaining unit → exactly one 201 and one 409.
 - Logfire instrumentation: fastapi, asyncpg.
 
 ## Infra
