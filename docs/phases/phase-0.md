@@ -141,7 +141,7 @@ One decision can carry several of these reasons.
 - `items` empty, `qty ≤ 0`, duplicate `order_item_id`, or an `order_item_id` not in the order.
 
 ## Evaluation order
-Per item, with `days = (now.date() - delivered_at.date()).days`, both converted to `cfg.timezone`. All reasons are collected.
+Per item, with `days = (now.date() - delivered_at.date()).days`, both converted to `cfg.timezone`, clamped at 0 (clock skew may put `delivered_at` a few minutes after `now`, across midnight). All reasons are collected.
 
 1. **Strict checks.** Any failure → INELIGIBLE, stop. Defect claims cannot bypass these.
    - `shipment_status != delivered` → NOT_DELIVERED (lost/exception included).
