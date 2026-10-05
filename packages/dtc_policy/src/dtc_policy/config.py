@@ -42,14 +42,16 @@ class ExchangeConfig(ConfigModel):
     require_same_price: bool
 
 
+# Soft-check failures a defect claim is allowed to bypass.
+BypassReason = Literal[
+    ReasonCode.WINDOW_EXPIRED,
+    ReasonCode.CATEGORY_NOT_RETURNABLE,
+    ReasonCode.CATEGORY_NOT_EXCHANGEABLE,
+]
+
+
 class DefectConfig(ConfigModel):
-    bypass_reasons: frozenset[
-        Literal[
-            ReasonCode.WINDOW_EXPIRED,
-            ReasonCode.CATEGORY_NOT_RETURNABLE,
-            ReasonCode.CATEGORY_NOT_EXCHANGEABLE,
-        ]
-    ]
+    bypass_reasons: frozenset[BypassReason]
 
 
 class CategoryConfig(ConfigModel):

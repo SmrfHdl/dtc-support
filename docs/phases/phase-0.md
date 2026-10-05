@@ -141,7 +141,7 @@ One decision can carry several of these reasons.
 - `items` empty, `qty ≤ 0`, duplicate `order_item_id`, or an `order_item_id` not in the order.
 
 ## Evaluation order
-Per item, with `days = (now.date() - delivered_at.date()).days`, both converted to `cfg.timezone`, clamped at 0 (clock skew may put `delivered_at` a few minutes after `now`, across midnight). All reasons are collected.
+Per item, with `days = (now.date() - delivered_at.date()).days`, both converted to `cfg.timezone`, clamped at 0 (clock skew may put `delivered_at` a few minutes after `now`, across midnight). All reasons are collected. Item `reasons` order: DEFECT_CLAIM first (defective items), then the order the checks run below (steps 1→7).
 
 1. **Strict checks.** Any failure → INELIGIBLE, stop. Defect claims cannot bypass these.
    - `shipment_status != delivered` → NOT_DELIVERED (lost/exception included).
@@ -168,7 +168,7 @@ Aggregate (priority NEED_INFO > NEED_MANAGER > APPROVE > DENY):
 - `refund_cents` (return only) = Σ `unit_price_cents × qty` over ELIGIBLE and NEEDS_REVIEW items. MVP has no order-level discount, tax, or shipping refund, and datagen must not generate them.
 - Any NEEDS_INFO → NEED_INFO, with `missing` filled and `refund_cents = None`.
 - Any NEEDS_REVIEW → NEED_MANAGER. DEFECT_CLAIM / UNKNOWN_CATEGORY are copied into decision `reasons`.
-- Return and `committed_refunds_cents + refund_cents ≥ cfg.refund.auto_limit_cents` → NEED_MANAGER + OVER_AUTO_LIMIT. Exchanges are not subject to the limit.
+- Return with at least one ELIGIBLE or NEEDS_REVIEW item and `committed_refunds_cents + refund_cents ≥ cfg.refund.auto_limit_cents` → NEED_MANAGER + OVER_AUTO_LIMIT. A request with nothing to refund never hits the limit (it stays DENY even if earlier refunds are already over it). Exchanges are not subject to the limit.
 - At least one ELIGIBLE → APPROVE, including a partial approve.
 - Otherwise → DENY. `reasons = [NOT_DELIVERED]` when every requested item is not delivered; the orchestrator then switches to WISMO.
 - `refund_cents`: amount for APPROVE / NEED_MANAGER on returns. `None` for DENY, NEED_INFO, and every exchange.
@@ -217,6 +217,7 @@ When any item has `defect_claim_possible`, the reply must include a sentence lik
 | 36 | Defective exchange, target_variant None | NEED_INFO, missing target_variant |
 | 37 | Category missing from YAML | NEED_MANAGER / UNKNOWN_CATEGORY |
 | 38 | One item missing condition + one defective item | NEED_INFO |
+| 38a | committed_refunds_cents 6000, only a final_sale item requested | DENY (no OVER_AUTO_LIMIT, nothing to refund) |
 | 39 | Each validation rule above | ValidationError |
 
 Property tests (hypothesis):
