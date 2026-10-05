@@ -41,7 +41,7 @@ Plain-language definitions for the terms used across `docs/` and `CLAUDE.md`. Gr
 | Return | Customer sends an item back and gets money back. |
 | Return abuse / fraud ring | Customers (or groups) exploiting return policies, e.g. returning used items repeatedly. Out of scope for now. |
 | Return window | The period after delivery during which a return is allowed: fewer than 30 days, counted in store-local calendar days. |
-| Returned qty (`returned_qty`, `committed_returned_qty`) | Units of an order item already returned. *Committed* includes returns still in progress (not rejected), so the same unit cannot be returned twice. |
+| Returned qty (`committed_returned_qty`) | Units of an order item in returns that are not rejected, including ones still in progress, so the same unit cannot be returned twice. Computed from `return_items`, never stored. |
 | RMA | Return Merchandise Authorization: the official "return approved" record/number the customer uses to send the item back. |
 | Shipment | One package of an order. Statuses: `label_created` (shipping label printed, not picked up yet), `in_transit` (on the way), `out_for_delivery` (on the truck today), `delivered`, `exception` (a problem: wrong address, damage, customs), `lost`. |
 | SKU | Stock Keeping Unit: the store's internal code for a product. |

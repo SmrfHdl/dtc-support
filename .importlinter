@@ -2,6 +2,7 @@
 root_packages =
     dtc_contracts
     dtc_policy
+    commerce_mock
 include_external_packages = True
 
 [importlinter:contract:contracts-is-leaf]
@@ -25,3 +26,12 @@ forbidden_modules =
     fastapi
     pydantic_ai
     logfire
+
+[importlinter:contract:packages-never-import-apps]
+name = packages never import apps
+type = forbidden
+source_modules =
+    dtc_contracts
+    dtc_policy
+forbidden_modules =
+    commerce_mock

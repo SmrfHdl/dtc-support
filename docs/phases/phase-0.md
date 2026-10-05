@@ -7,17 +7,31 @@ Money is stored as int `*_cents`. Time is stored as `timestamptz` UTC.
 | Table | Key columns |
 |---|---|
 | customers | id, email (unique), name, created_at |
-| products | id, sku, name, category_code, price_cents |
-| variants | id, product_id, size, color, price_cents, stock |
+| products | id, sku (unique), name, category_code |
+| variants | id, product_id, size, color, list_price_cents, stock |
 | orders | id, order_number (unique), customer_id, status, placed_at, total_cents |
-| order_items | id, order_id, variant_id, qty, unit_price_cents, returned_qty |
-| shipments | id, order_id, carrier, tracking_number, status (label_created/in_transit/out_for_delivery/delivered/exception/lost), shipped_at, delivered_at, eta |
+| order_items | id, order_id, variant_id, shipment_id (nullable), qty, unit_price_cents |
+| shipments | id, order_id, carrier, tracking_number (unique), status (label_created/in_transit/out_for_delivery/delivered/exception/lost), shipped_at, delivered_at, eta |
 | shipment_events | id, shipment_id, ts, status, location, description |
-| returns | id, order_id, type (return/exchange), status (approved/pending_manager/received/inspection_passed/refunded/rejected), reason_code, condition_claim, policy_version, idempotency_key (unique) |
-| return_items | return_id, order_item_id, qty, exchange_variant_id (nullable) |
-| refunds | id, return_id, amount_cents, status, approved_by (nullable), idempotency_key (unique) |
+| returns | id, order_id, type (return/exchange), status (approved/pending_manager/received/inspection_passed/refunded/rejected), refund_cents (nullable), reason_codes text[], policy_version, idempotency_key (unique), created_at |
+| return_items | return_id, order_item_id, qty, condition_claim (nullable), exchange_variant_id (nullable) |
+| refunds | id, return_id, amount_cents, status, approved_by (nullable), idempotency_key (unique), created_at |
+| request_log | id, ts, method, path, status_code, idempotency_key (nullable), latency_ms, trace_id |
 
-Category rules live only in the policy YAML. The DB stores only `category_code`.
+Conventions:
+- Primary keys are UUIDs generated in Python (datagen derives them from its seed, so the dataset is reproducible).
+- Status columns are `text` + `CHECK`, not Postgres `ENUM` (adding a value would need its own migration).
+- `CHECK` constraints: `qty > 0`, `stock >= 0`, every `*_cents >= 0`.
+- Category rules live only in the policy YAML. The DB stores only `category_code`.
+- `variants.list_price_cents` is the only list price; products carry no price.
+
+Mapping to `PolicyInput` (done by the commerce client):
+- `VariantSnapshot.category_code` comes from the variant's product.
+- `OrderItemSnapshot.shipment_status` / `delivered_at` come from the shipment linked by `order_items.shipment_id`. An item with no shipment yet is `label_created`, `delivered_at = None`. One order item ships in one shipment (no split lines in MVP).
+- `committed_returned_qty` = `SUM(return_items.qty)` over the item's returns with `status <> 'rejected'`. Not stored, so it cannot drift.
+- `committed_refunds_cents` = `SUM(returns.refund_cents)` over the order's returns with `status <> 'rejected'`. `returns.refund_cents` is written when the return is created (the policy's `refund_cents`; NULL for exchanges), because the `refunds` row only appears after inspection (`release_on: inspection_passed`).
+
+`request_log` is the mock's own request log. It does not write to `support.audit_log`: that schema belongs to dtc_store (ADR-0006) and is created in P1.
 
 ### Schema `support` (owner: dtc_store, created in P1)
 | Table | Key columns |
@@ -252,7 +266,7 @@ CLI: `datagen --seed 42 --customers 2000 --orders 5000 --now 2026-09-28T12:00:00
 | POST | /returns/{id}/inspect |
 
 - Per-route fault injection via env: `MOCK_LATENCY_P50_MS`, `MOCK_LATENCY_P99_MS`, `MOCK_ERROR_RATE`.
-- Every request is written to `audit_log`.
+- Every request is written to `commerce.request_log`.
 - **Concurrency re-check on writes.** The policy decides on a snapshot, so two requests arriving together (two tabs, double submit) can both be approved before either return is written. `Idempotency-Key` does not help, because they are different requests. `POST /returns` and `POST /refunds` must therefore re-check inside one transaction, locking the order's `order_items` rows (`SELECT … FOR UPDATE`):
   - requested qty ≤ `qty − committed_returned_qty` for every item;
   - `committed_refunds_cents + new amount < auto_limit_cents` unless the refund is manager-approved.

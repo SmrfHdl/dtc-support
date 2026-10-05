@@ -1,0 +1,34 @@
+# Local dev stack (P0). Credentials are for local use only.
+name: dtc-support
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: dtc
+      POSTGRES_PASSWORD: dtc
+      POSTGRES_DB: dtc
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtc -d dtc"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # commerce-mock is added in P0 step 5.
+
+volumes:
+  pgdata:

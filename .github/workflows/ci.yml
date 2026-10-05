@@ -8,6 +8,22 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: dtc
+          POSTGRES_PASSWORD: dtc
+          POSTGRES_DB: dtc
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dtc -d dtc"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      COMMERCE_DATABASE_URL: postgresql+asyncpg://dtc:dtc@localhost:5432/dtc
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

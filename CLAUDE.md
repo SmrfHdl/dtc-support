@@ -75,6 +75,9 @@ uv run ruff check . && uv run ruff format --check .
 uv run pyright
 uv run lint-imports
 docker compose -f deploy/compose/docker-compose.yml up -d
+uv run alembic -c apps/commerce_mock/alembic.ini upgrade head          # commerce schema
+uv run alembic -c apps/commerce_mock/alembic.ini revision --autogenerate -m "..."
+COMMERCE_DATABASE_URL=postgresql+asyncpg://dtc:dtc@localhost:5432/dtc uv run pytest -m integration
 ```
 
 ## Working style
