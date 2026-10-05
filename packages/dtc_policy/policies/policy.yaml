@@ -1,0 +1,21 @@
+version: "2026.09.28-1"
+timezone: America/Los_Angeles
+return:
+  window_days: 30             # eligible when days_since_delivery < 30
+  window_anchor: delivered_at
+  allowed_conditions: [new_with_tags, like_new]
+refund:
+  auto_limit_cents: 5000      # < 5000 → auto, >= 5000 → manager
+  aggregate_scope: order
+  release_on: inspection_passed
+exchange:
+  require_same_price: true    # same_category only
+defect:
+  # soft-check failures a defect claim may bypass (item goes to NEEDS_REVIEW instead of INELIGIBLE)
+  bypass_reasons: [WINDOW_EXPIRED, CATEGORY_NOT_RETURNABLE, CATEGORY_NOT_EXCHANGEABLE]
+categories:
+  apparel:     {returnable: true,  exchange: same_product}
+  footwear:    {returnable: true,  exchange: same_product}
+  accessories: {returnable: true,  exchange: same_category}
+  underwear:   {returnable: false, exchange: none}
+  final_sale:  {returnable: false, exchange: none}
