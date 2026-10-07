@@ -9,13 +9,13 @@ Money is stored as int `*_cents`. Time is stored as `timestamptz` UTC.
 | customers | id, email (unique), name, created_at |
 | products | id, sku (unique), name, category_code |
 | variants | id, product_id, size, color, list_price_cents, stock |
-| orders | id, order_number (unique), customer_id, status, placed_at, total_cents |
+| orders | id, order_number (unique), customer_id, status (placed/partially_shipped/shipped/delivered/cancelled), placed_at, total_cents |
 | order_items | id, order_id, variant_id, shipment_id (nullable), qty, unit_price_cents |
 | shipments | id, order_id, carrier, tracking_number (unique), status (label_created/in_transit/out_for_delivery/delivered/exception/lost), shipped_at, delivered_at, eta |
 | shipment_events | id, shipment_id, ts, status, location, description |
 | returns | id, order_id, type (return/exchange), status (approved/pending_manager/received/inspection_passed/refunded/rejected), refund_cents (nullable), reason_codes text[], policy_version, idempotency_key (unique), created_at |
 | return_items | return_id, order_item_id, qty, condition_claim (nullable), exchange_variant_id (nullable) |
-| refunds | id, return_id, amount_cents, status, approved_by (nullable), idempotency_key (unique), created_at |
+| refunds | id, return_id, amount_cents, status (pending/completed/failed), approved_by (nullable), idempotency_key (unique), created_at |
 | request_log | id, ts, method, path, status_code, idempotency_key (nullable), latency_ms, trace_id |
 
 Conventions:

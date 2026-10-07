@@ -37,6 +37,10 @@ extend-exclude = ["docs"]
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "N", "PT", "DTZ"]
 
+[tool.ruff.lint.per-file-ignores]
+# Generated DDL: long CHECK expressions and column lists cannot be wrapped.
+"**/migrations/versions/*.py" = ["E501"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["dtc_contracts", "dtc_policy", "commerce_mock"]
 
