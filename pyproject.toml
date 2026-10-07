@@ -9,6 +9,7 @@ dev = [
     "dtc-contracts",
     "dtc-policy",
     "commerce-mock",
+    "dtc-datagen",
     "pytest>=8",
     "pytest-cov>=5",
     "hypothesis>=6",
@@ -16,6 +17,7 @@ dev = [
     "pyright>=1.1.380",
     "import-linter>=2.1",
     "types-pyyaml",
+    "asyncpg-stubs",
 ]
 
 [tool.uv]
@@ -28,6 +30,7 @@ members = ["packages/*", "apps/*"]
 dtc-contracts = { workspace = true }
 dtc-policy = { workspace = true }
 commerce-mock = { workspace = true }
+dtc-datagen = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -42,7 +45,7 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "N", "PT", "DTZ"]
 "**/migrations/versions/*.py" = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["dtc_contracts", "dtc_policy", "commerce_mock"]
+known-first-party = ["dtc_contracts", "dtc_policy", "dtc_datagen", "commerce_mock"]
 
 [tool.pyright]
 include = ["packages", "apps"]

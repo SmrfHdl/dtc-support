@@ -243,7 +243,7 @@ Property tests (hypothesis):
 - UNKNOWN_CATEGORY never produces DENY for that item on its own.
 - Determinism: same input, same output.
 
-CI: a test asserts every `category_code` in the catalog/datagen exists in the policy YAML.
+CI: a test asserts every `category_code` in the random catalog exists in the policy YAML. Case 37 fixtures deliberately use a category missing from the YAML and are exempt.
 
 ## Datagen
 CLI: `datagen --seed 42 --customers 2000 --orders 5000 --now 2026-09-28T12:00:00Z`
@@ -251,7 +251,13 @@ CLI: `datagen --seed 42 --customers 2000 --orders 5000 --now 2026-09-28T12:00:00
 - `delivered_at` spread over 0–60 days before `now`.
 - Shipment mix: delivered 70%, in_transit 15%, label_created 8%, exception 5%, lost 2%.
 - About 20 fixture orders per test case above. These fixtures are reused as the P1 golden set.
-- Load into the DB with COPY.
+  - Cases 4 (DST) and 31 (custom `bypass_reasons`) have no fixtures: with the fixed `now` no DST change falls inside the window, and 31 varies the config, not the data. Unit tests cover both. Case 39 is input validation, not data.
+  - Each fixture has its own customer, products, and variants (`sku` and `order_number` prefixed `FX-`), so fixtures do not depend on `--customers` / `--orders`.
+  - Each fixture stores the request and the expected `code`, decision `reasons`, and `refund_cents`. Datagen builds the `PolicyInput` from the generated rows (same mapping as the commerce client, see Schema) and runs `evaluate()`; any mismatch fails generation.
+  - Written to `evals/datasets/policy_fixtures.jsonl` (committed; a test fails if it is stale).
+- Reproducible: one `random.Random` per stream (bulk, fixtures) seeded from `--seed`. No `uuid4()`, no `datetime.now()`, no Faker (its output changes between versions).
+- Datagen is a package, so it cannot import the app's ORM models. Rows are dataclasses whose fields are the column names; a test in `commerce_mock` checks they match the models.
+- Load into the DB with COPY (`TRUNCATE` first, so re-seeding is safe). The schema must exist (`alembic upgrade head`).
 
 ## Commerce mock API
 | Method | Path |

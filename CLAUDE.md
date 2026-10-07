@@ -77,6 +77,7 @@ uv run lint-imports
 docker compose -f deploy/compose/docker-compose.yml up -d
 uv run alembic -c apps/commerce_mock/alembic.ini upgrade head          # commerce schema
 uv run alembic -c apps/commerce_mock/alembic.ini revision --autogenerate -m "..."
+POLICY_PATH=packages/dtc_policy/policies/policy.yaml uv run datagen   # seed DB + write evals/datasets/policy_fixtures.jsonl
 COMMERCE_DATABASE_URL=postgresql+asyncpg://dtc:dtc@localhost:5432/dtc uv run pytest -m integration
 ```
 
