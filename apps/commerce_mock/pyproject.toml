@@ -7,6 +7,10 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.30",
     "asyncpg>=0.29",
     "alembic>=1.13",
+    "dtc-policy",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "logfire[fastapi,asyncpg]>=3",
 ]
 
 [build-system]
@@ -18,3 +22,4 @@ packages = ["src/commerce_mock"]
 
 [tool.uv.sources]
 dtc-contracts = { workspace = true }
+dtc-policy = { workspace = true }

@@ -3,6 +3,7 @@ root_packages =
     dtc_contracts
     dtc_policy
     dtc_datagen
+    dtc_commerce
     commerce_mock
 include_external_packages = True
 
@@ -35,5 +36,6 @@ source_modules =
     dtc_contracts
     dtc_policy
     dtc_datagen
+    dtc_commerce
 forbidden_modules =
     commerce_mock

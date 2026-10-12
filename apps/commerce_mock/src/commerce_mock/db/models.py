@@ -10,20 +10,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from commerce_mock.db.base import Base
 from dtc_contracts import ConditionClaim, ShipmentStatus
+from dtc_contracts.commerce import OrderStatus, RefundStatus, ReturnStatus, ReturnType
 
 SHIPMENT_STATUSES: tuple[str, ...] = get_args(ShipmentStatus)
 CONDITION_CLAIMS: tuple[str, ...] = get_args(ConditionClaim)
-ORDER_STATUSES = ("placed", "partially_shipped", "shipped", "delivered", "cancelled")
-RETURN_TYPES = ("return", "exchange")
-RETURN_STATUSES = (
-    "approved",
-    "pending_manager",
-    "received",
-    "inspection_passed",
-    "refunded",
-    "rejected",
-)
-REFUND_STATUSES = ("pending", "completed", "failed")
+ORDER_STATUSES: tuple[str, ...] = get_args(OrderStatus)
+RETURN_TYPES: tuple[str, ...] = get_args(ReturnType)
+RETURN_STATUSES: tuple[str, ...] = get_args(ReturnStatus)
+REFUND_STATUSES: tuple[str, ...] = get_args(RefundStatus)
 
 
 def one_of(column: str, values: tuple[str, ...]) -> str:
@@ -72,7 +66,7 @@ class Order(Base):
     customer_id: Mapped[UUID] = mapped_column(
         ForeignKey("customers.id"), index=True, nullable=False
     )
-    status: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[OrderStatus] = mapped_column(Text, nullable=False)
     placed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     total_cents: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -90,7 +84,7 @@ class Shipment(Base):
     order_id: Mapped[UUID] = mapped_column(ForeignKey("orders.id"), index=True, nullable=False)
     carrier: Mapped[str] = mapped_column(String(255), nullable=False)
     tracking_number: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    status: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[ShipmentStatus] = mapped_column(Text, nullable=False)
     shipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     eta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -119,7 +113,7 @@ class ShipmentEvent(Base):
         ForeignKey("shipments.id"), index=True, nullable=False
     )
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    status: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[ShipmentStatus] = mapped_column(Text, nullable=False)
     location: Mapped[str | None] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -135,14 +129,16 @@ class Return(Base):
     )
     id: Mapped[UUID] = mapped_column(primary_key=True)
     order_id: Mapped[UUID] = mapped_column(ForeignKey("orders.id"), index=True, nullable=False)
-    type: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(Text, nullable=False)
+    type: Mapped[ReturnType] = mapped_column(Text, nullable=False)
+    status: Mapped[ReturnStatus] = mapped_column(Text, nullable=False)
     refund_cents: Mapped[int | None] = mapped_column(Integer)
     reason_codes: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False, server_default="{}"
     )
     policy_version: Mapped[str] = mapped_column(String(255), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    # SHA-256 of the request body; NULL for rows not created through the API (seed data).
+    request_hash: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -157,7 +153,7 @@ class ReturnItem(Base):
         ForeignKey("order_items.id"), primary_key=True, index=True
     )
     qty: Mapped[int] = mapped_column(Integer, nullable=False)
-    condition_claim: Mapped[str | None] = mapped_column(Text)
+    condition_claim: Mapped[ConditionClaim | None] = mapped_column(Text)
     exchange_variant_id: Mapped[UUID | None] = mapped_column(ForeignKey("variants.id"))
 
 
@@ -170,9 +166,11 @@ class Refund(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True)
     return_id: Mapped[UUID] = mapped_column(ForeignKey("returns.id"), index=True, nullable=False)
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
-    status: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[RefundStatus] = mapped_column(Text, nullable=False)
     approved_by: Mapped[str | None] = mapped_column(String(255))
     idempotency_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    # SHA-256 of the request body; NULL for rows not created through the API (seed data).
+    request_hash: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

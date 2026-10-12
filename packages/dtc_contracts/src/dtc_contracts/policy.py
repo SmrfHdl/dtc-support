@@ -4,22 +4,15 @@ from datetime import timedelta
 from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, Field, model_validator
 
+from dtc_contracts.base import ContractModel, NonNegInt, PositiveInt
 from dtc_contracts.enums import DecisionCode, ItemStatus, ReasonCode
 
 ConditionClaim = Literal["new_with_tags", "like_new", "worn", "defective"]
 ShipmentStatus = Literal[
     "label_created", "in_transit", "out_for_delivery", "delivered", "exception", "lost"
 ]
-
-
-PositiveInt = Annotated[int, Field(gt=0)]
-NonNegInt = Annotated[int, Field(ge=0)]
-
-
-class ContractModel(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
 
 
 class VariantSnapshot(ContractModel):

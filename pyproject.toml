@@ -10,6 +10,7 @@ dev = [
     "dtc-policy",
     "commerce-mock",
     "dtc-datagen",
+    "dtc-commerce",
     "pytest>=8",
     "pytest-cov>=5",
     "hypothesis>=6",
@@ -18,6 +19,7 @@ dev = [
     "import-linter>=2.1",
     "types-pyyaml",
     "asyncpg-stubs",
+    "httpx>=0.27",
 ]
 
 [tool.uv]
@@ -31,6 +33,7 @@ dtc-contracts = { workspace = true }
 dtc-policy = { workspace = true }
 commerce-mock = { workspace = true }
 dtc-datagen = { workspace = true }
+dtc-commerce = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -45,17 +48,17 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "N", "PT", "DTZ"]
 "**/migrations/versions/*.py" = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["dtc_contracts", "dtc_policy", "dtc_datagen", "commerce_mock"]
+known-first-party = ["dtc_contracts", "dtc_policy", "dtc_datagen", "dtc_commerce", "commerce_mock"]
 
 [tool.pyright]
-include = ["packages", "apps"]
+include = ["packages", "apps", "tests", "conftest.py"]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
 
 [tool.pytest.ini_options]
-testpaths = ["packages", "apps"]
+testpaths = ["packages", "apps", "tests"]
 addopts = ["--import-mode=importlib", "--strict-markers"]
 markers = ["integration: needs a running Postgres (COMMERCE_DATABASE_URL)"]
 

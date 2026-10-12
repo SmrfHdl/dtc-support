@@ -85,6 +85,7 @@ class ReturnRow:
     reason_codes: list[str]
     policy_version: str
     idempotency_key: str
+    request_hash: str | None
     created_at: datetime
 
 
@@ -105,6 +106,7 @@ class RefundRow:
     status: str
     approved_by: str | None
     idempotency_key: str
+    request_hash: str | None
     created_at: datetime
 
 

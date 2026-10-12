@@ -13,9 +13,9 @@ Money is stored as int `*_cents`. Time is stored as `timestamptz` UTC.
 | order_items | id, order_id, variant_id, shipment_id (nullable), qty, unit_price_cents |
 | shipments | id, order_id, carrier, tracking_number (unique), status (label_created/in_transit/out_for_delivery/delivered/exception/lost), shipped_at, delivered_at, eta |
 | shipment_events | id, shipment_id, ts, status, location, description |
-| returns | id, order_id, type (return/exchange), status (approved/pending_manager/received/inspection_passed/refunded/rejected), refund_cents (nullable), reason_codes text[], policy_version, idempotency_key (unique), created_at |
+| returns | id, order_id, type (return/exchange), status (approved/pending_manager/received/inspection_passed/refunded/rejected), refund_cents (nullable), reason_codes text[], policy_version, idempotency_key (unique), request_hash (nullable: seed rows have none), created_at |
 | return_items | return_id, order_item_id, qty, condition_claim (nullable), exchange_variant_id (nullable) |
-| refunds | id, return_id, amount_cents, status (pending/completed/failed), approved_by (nullable), idempotency_key (unique), created_at |
+| refunds | id, return_id, amount_cents, status (pending/completed/failed), approved_by (nullable), idempotency_key (unique), request_hash (nullable: seed rows have none), created_at |
 | request_log | id, ts, method, path, status_code, idempotency_key (nullable), latency_ms, trace_id |
 
 Conventions:
@@ -260,25 +260,33 @@ CLI: `datagen --seed 42 --customers 2000 --orders 5000 --now 2026-09-28T12:00:00
 - Load into the DB with COPY (`TRUNCATE` first, so re-seeding is safe). The schema must exist (`alembic upgrade head`).
 
 ## Commerce mock API
-| Method | Path |
-|---|---|
-| GET | /customers/lookup?email= |
-| GET | /customers/{id}/orders?limit= |
-| GET | /orders/{order_number} |
-| GET | /shipments/{tracking}/events |
-| GET | /variants/{id} |
-| POST | /returns (header Idempotency-Key) |
-| POST | /refunds (header Idempotency-Key) |
-| POST | /returns/{id}/inspect |
+Request/response models live in `dtc_contracts.commerce` (shared by the mock and `dtc_commerce`). Errors use one body: `{"code": ..., "detail": ...}`.
 
-- Per-route fault injection via env: `MOCK_LATENCY_P50_MS`, `MOCK_LATENCY_P99_MS`, `MOCK_ERROR_RATE`.
+| Method | Path | Notes |
+|---|---|---|
+| GET | /customers/lookup?email= | 404 if unknown |
+| GET | /customers/{id}/orders?limit= | newest first, default limit 10 |
+| GET | /orders/{order_number} | Everything the client needs for `PolicyInput` in one call: items with variant (incl. `category_code`) and `shipment_id`, the order's shipments, per-item `committed_returned_qty`, and `committed_refunds_cents`. Computed by the mock, not stored. |
+| GET | /shipments/{tracking}/events | events oldest first |
+| GET | /variants/{id} | incl. `category_code` (exchange targets) |
+| POST | /returns | header `Idempotency-Key`; 201 |
+| POST | /refunds | header `Idempotency-Key`; 201 |
+| POST | /returns/{id}/inspect | `{"passed": bool}` → `inspection_passed` or `rejected`. Allowed from `approved`, `received`, `pending_manager`; otherwise `409 invalid_transition`. |
+
+- The mock loads the policy YAML from `POLICY_PATH` (same `PolicyConfig` as the policy engine) for `auto_limit_cents` and `version`.
+- Time comes from `MOCK_NOW` (default: the datagen `now`), never the system clock, so data and fixtures stay consistent.
+- Fault injection via env: `MOCK_LATENCY_P50_MS`, `MOCK_LATENCY_P99_MS`, `MOCK_ERROR_RATE` (default 0 = off). Per-route override with a suffix, e.g. `MOCK_ERROR_RATE__GET_ORDERS`. Injected errors are `503`.
 - Every request is written to `commerce.request_log`.
-- **Concurrency re-check on writes.** The policy decides on a snapshot, so two requests arriving together (two tabs, double submit) can both be approved before either return is written. `Idempotency-Key` does not help, because they are different requests. `POST /returns` and `POST /refunds` must therefore re-check inside one transaction, locking the order's `order_items` rows (`SELECT … FOR UPDATE`):
-  - requested qty ≤ `qty − committed_returned_qty` for every item;
-  - `committed_refunds_cents + new amount < auto_limit_cents` unless the refund is manager-approved.
-  - On violation → `409 Conflict`, nothing written. Handling 409 (rebuild the snapshot, call `evaluate` again) is orchestrator work in P1.
-  - Test: two concurrent `POST /returns` for the last remaining unit → exactly one 201 and one 409.
-- Logfire instrumentation: fastapi, asyncpg.
+- **Idempotency.** `returns` and `refunds` store `request_hash` (SHA-256 of the canonical JSON body). Same key + same hash → `200` with the stored resource. Same key + different hash → `422 idempotency_mismatch`. Two requests racing on one key: the unique constraint decides, the loser re-reads.
+- **Concurrency re-check on writes.** The policy decides on a snapshot, so two requests arriving together (two tabs, double submit) can both be approved before either return is written. `Idempotency-Key` does not help, because they are different requests. Writes therefore re-check inside one transaction, after locking the order's `order_items` rows (`SELECT … FOR UPDATE`). On violation → `409`, nothing written. Handling 409 (rebuild the snapshot, call `evaluate` again) is orchestrator work in P1.
+  - `POST /returns`:
+    - `policy_version` must equal the loaded version (`409 policy_changed`).
+    - Every item: requested qty ≤ `qty − committed_returned_qty` (`409 qty_conflict`).
+    - `type = return`: `refund_cents` must equal Σ `unit_price_cents × qty` (`422`). With `status = approved`, `committed_refunds_cents + refund_cents < auto_limit_cents` (`409 over_limit`). `status = pending_manager` skips the limit (a human approves later). `committed_refunds_cents` here excludes the new return.
+    - `status = pending_manager` requires non-empty `reason_codes`; `approved` requires empty (`422`).
+  - `POST /refunds`: the return must be `type = return` and `inspection_passed` (`409 not_releasable`); `amount_cents` must equal the return's `refund_cents` and no refund may exist yet for it (`409 already_refunded`); `approved_by` is required when the return's `reason_codes` is non-empty (the decision was NEED_MANAGER), else `422`. On success the return becomes `refunded`. The refund limit is checked once, on `POST /returns`: checking it again here would count this return's amount twice, since it is already in `committed_refunds_cents`.
+  - Tests: two concurrent `POST /returns` for the last remaining unit → exactly one 201 and one 409; same for two returns that together cross the limit.
+- Logfire instrumentation: fastapi, asyncpg (`send_to_logfire="if-token-present"`, so it runs without a token).
 
 ## Infra
 Compose services:

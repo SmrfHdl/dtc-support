@@ -156,6 +156,7 @@ class Builder:
             reason_codes=["DEFECT_CLAIM"] if condition == "defective" else [],
             policy_version=policy_version,
             idempotency_key=str(self.rng.uuid()),
+            request_hash=None,
             created_at=created_at,
         )
         self.ds.returns.append(row)
@@ -177,6 +178,7 @@ class Builder:
                     status="completed",
                     approved_by=None,
                     idempotency_key=str(self.rng.uuid()),
+                    request_hash=None,
                     created_at=self.rng.between(min(created_at + 2 * D, self.now), self.now),
                 )
             )

@@ -19,9 +19,9 @@ ALEMBIC_INI = Path(__file__).parents[1] / "alembic.ini"
 
 
 @pytest.fixture
-def alembic_cfg(database_url: str) -> Config:
+def alembic_cfg(scratch_database_url: str) -> Config:
     cfg = Config(str(ALEMBIC_INI))
-    cfg.set_main_option("sqlalchemy.url", database_url)
+    cfg.set_main_option("sqlalchemy.url", scratch_database_url)
     return cfg
 
 
@@ -44,6 +44,6 @@ def test_upgrade_downgrade_upgrade(alembic_cfg: Config) -> None:
     command.upgrade(alembic_cfg, "head")
 
 
-def test_models_match_migrations(alembic_cfg: Config, database_url: str) -> None:
+def test_models_match_migrations(alembic_cfg: Config, scratch_database_url: str) -> None:
     command.upgrade(alembic_cfg, "head")
-    assert asyncio.run(_model_diff(database_url)) == []
+    assert asyncio.run(_model_diff(scratch_database_url)) == []
