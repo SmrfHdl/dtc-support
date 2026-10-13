@@ -15,6 +15,8 @@ from commerce_mock.errors import ApiError
 from commerce_mock.faults import Faults
 
 Handler = Callable[[Request], Awaitable[Response]]
+# Probes (Docker healthcheck every few seconds): no trace, no request_log row.
+UNOBSERVED_PATHS = frozenset({"/health"})
 
 
 async def inject_fault(request: Request) -> None:
@@ -39,6 +41,8 @@ def install_request_log(app: FastAPI) -> None:
     async def request_log(request: Request, call_next: Handler) -> Response:  # pyright: ignore[reportUnusedFunction]
         start = time.perf_counter()
         response = await call_next(request)
+        if request.url.path in UNOBSERVED_PATHS:
+            return response
         sessions: async_sessionmaker[AsyncSession] = app.state.sessions
         async with sessions() as session, session.begin():
             session.add(

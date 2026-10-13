@@ -79,6 +79,7 @@ uv run alembic -c apps/commerce_mock/alembic.ini upgrade head          # commerc
 uv run alembic -c apps/commerce_mock/alembic.ini revision --autogenerate -m "..."
 POLICY_PATH=packages/dtc_policy/policies/policy.yaml uv run datagen   # seed DB + write evals/datasets/policy_fixtures.jsonl
 COMMERCE_DATABASE_URL=postgresql+asyncpg://dtc:dtc@localhost:5432/dtc uv run pytest -m integration
+uv run python scripts/smoke_test.py   # P0 exit check; LOGFIRE_TOKEN from .env (see .env.example)
 ```
 
 ## Working style

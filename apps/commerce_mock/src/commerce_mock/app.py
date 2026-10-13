@@ -47,6 +47,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     logfire.configure(
         service_name="commerce-mock", send_to_logfire="if-token-present", console=False
     )
-    logfire.instrument_fastapi(app)
+    logfire.instrument_fastapi(app, excluded_urls=",".join(observe.UNOBSERVED_PATHS))
     logfire.instrument_asyncpg()
     return app

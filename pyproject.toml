@@ -20,6 +20,7 @@ dev = [
     "types-pyyaml",
     "asyncpg-stubs",
     "httpx>=0.27",
+    "logfire[httpx]>=3",
 ]
 
 [tool.uv]
@@ -51,7 +52,7 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "N", "PT", "DTZ"]
 known-first-party = ["dtc_contracts", "dtc_policy", "dtc_datagen", "dtc_commerce", "commerce_mock"]
 
 [tool.pyright]
-include = ["packages", "apps", "tests", "conftest.py"]
+include = ["packages", "apps", "tests", "scripts", "conftest.py"]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
 venvPath = "."

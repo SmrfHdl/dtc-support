@@ -38,7 +38,9 @@ services:
       MOCK_LATENCY_P50_MS: ${MOCK_LATENCY_P50_MS:-0}
       MOCK_LATENCY_P99_MS: ${MOCK_LATENCY_P99_MS:-0}
       MOCK_ERROR_RATE: ${MOCK_ERROR_RATE:-0}
-      LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
+    env_file:
+      - path: ../../.env  # LOGFIRE_TOKEN (optional; traces stay local without it)
+        required: false
     ports:
       - "8001:8000"
     depends_on:
@@ -46,9 +48,11 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 3s
+      interval: 30s        # steady state: one probe every 30s
+      start_period: 30s
+      start_interval: 1s   # while starting: every 1s, so `up --wait` stays fast
       timeout: 3s
-      retries: 20
+      retries: 3
 
 volumes:
   pgdata:

@@ -71,3 +71,9 @@ async def test_get_order_p50_under_20ms(client: httpx.AsyncClient, seeded: Gener
         timings.append((time.perf_counter() - start) * 1000)
         assert r.status_code == 200
     assert median(timings) < 20, f"p50 {median(timings):.1f}ms"
+
+
+async def test_health_is_not_logged(client: httpx.AsyncClient, database_url: str) -> None:
+    before = len(await log_rows(database_url, "/health"))
+    assert (await client.get("/health")).status_code == 200
+    assert len(await log_rows(database_url, "/health")) == before
