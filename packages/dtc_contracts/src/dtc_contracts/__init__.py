@@ -1,4 +1,6 @@
+from dtc_contracts.chat import ChatIn, ChatOut
 from dtc_contracts.enums import DecisionCode, ItemStatus, ReasonCode
+from dtc_contracts.nlu import Intent, ItemMention, NluResult
 from dtc_contracts.policy import (
     ConditionClaim,
     ItemDecision,
@@ -13,11 +15,16 @@ from dtc_contracts.policy import (
 )
 
 __all__ = [
+    "ChatIn",
+    "ChatOut",
     "ConditionClaim",
     "DecisionCode",
+    "Intent",
     "ItemDecision",
+    "ItemMention",
     "ItemStatus",
     "MissingField",
+    "NluResult",
     "OrderItemSnapshot",
     "OrderSnapshot",
     "PolicyDecision",

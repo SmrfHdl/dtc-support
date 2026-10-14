@@ -73,6 +73,16 @@ class VariantOut(ContractModel):
     stock: NonNegInt
 
 
+class ProductVariantsOut(ContractModel):
+    """Every variant of one product (exchange targets: other sizes and colors)."""
+
+    product_id: UUID
+    sku: str
+    product_name: str
+    category_code: str
+    variants: list[VariantOut]  # ordered by size, then color
+
+
 class ShipmentOut(ContractModel):
     id: UUID
     carrier: str

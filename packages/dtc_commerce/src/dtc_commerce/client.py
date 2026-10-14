@@ -9,6 +9,7 @@ from dtc_contracts.commerce import (
     CustomerOut,
     OrderOut,
     OrderSummaryOut,
+    ProductVariantsOut,
     RefundOut,
     ReturnOut,
     ShipmentEventsOut,
@@ -30,6 +31,8 @@ class CommerceClient(Protocol):
     async def shipment_events(self, tracking_number: str) -> ShipmentEventsOut | None: ...
 
     async def get_variant(self, variant_id: UUID) -> VariantOut | None: ...
+
+    async def product_variants(self, product_id: UUID) -> ProductVariantsOut | None: ...
 
     async def create_return(self, body: CreateReturnIn, idempotency_key: str) -> ReturnOut: ...
 

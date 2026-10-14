@@ -1,5 +1,5 @@
 # ADR-0003: Hybrid LLM
-- Status: Accepted (2026-09-28)
+- Status: Accepted (2026-09-28). NLU part superseded by ADR-0010 (2026-10-14): the NLU runs on an LLM API; a fine-tuned small model is optional.
 - Decision:
   - NLU (intent, entities, emotion, escalate flag): Qwen2.5-1.5B + LoRA on vLLM with guided JSON. GPU temporarily rented on vast.ai.
   - Response: Claude Haiku 4.5. Fallback agent: Sonnet.

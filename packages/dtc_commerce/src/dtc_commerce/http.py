@@ -21,6 +21,7 @@ from dtc_contracts.commerce import (
     InspectReturnIn,
     OrderOut,
     OrderSummaryOut,
+    ProductVariantsOut,
     RefundOut,
     ReturnOut,
     ShipmentEventsOut,
@@ -49,6 +50,9 @@ class HttpCommerceClient:
 
     async def get_variant(self, variant_id: UUID) -> VariantOut | None:
         return await self._get(VariantOut, f"/variants/{variant_id}")
+
+    async def product_variants(self, product_id: UUID) -> ProductVariantsOut | None:
+        return await self._get(ProductVariantsOut, f"/products/{product_id}/variants")
 
     async def create_return(self, body: CreateReturnIn, idempotency_key: str) -> ReturnOut:
         r = await self._send("POST", "/returns", body, idempotency_key)

@@ -25,6 +25,7 @@ from dtc_contracts.commerce import (
     OrderItemOut,
     OrderOut,
     OrderSummaryOut,
+    ProductVariantsOut,
     ShipmentEventOut,
     ShipmentEventsOut,
     ShipmentOut,
@@ -194,3 +195,22 @@ async def get_variant(variant_id: UUID, session: Session) -> VariantOut:
     if row is None:
         raise not_found("variant")
     return variant_out(*row)
+
+
+@router.get("/products/{product_id}/variants")
+async def product_variants(product_id: UUID, session: Session) -> ProductVariantsOut:
+    product = await session.get(Product, product_id)
+    if product is None:
+        raise not_found("product")
+    variants = await session.scalars(
+        select(Variant)
+        .where(Variant.product_id == product_id)
+        .order_by(Variant.size, Variant.color, Variant.id)
+    )
+    return ProductVariantsOut(
+        product_id=product.id,
+        sku=product.sku,
+        product_name=product.name,
+        category_code=product.category_code,
+        variants=[variant_out(v, product) for v in variants],
+    )

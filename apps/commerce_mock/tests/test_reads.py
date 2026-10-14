@@ -11,6 +11,7 @@ from dtc_contracts.commerce import (
     CustomerOut,
     ErrorOut,
     OrderOut,
+    ProductVariantsOut,
     ShipmentEventsOut,
     VariantOut,
 )
@@ -109,3 +110,21 @@ async def test_variant(client: httpx.AsyncClient, seeded: Generated) -> None:
         v.stock,
     )
     await assert_not_found(await client.get(f"/variants/{UUID(int=0)}"))
+
+
+async def test_product_variants(client: httpx.AsyncClient, seeded: Generated) -> None:
+    # Case 15 fixtures exchange to another size of the same product: that size must be listed.
+    fixture = next(f for f in seeded.fixtures if f.case == "15")
+    target_id = fixture.requests[0].target_variant_id
+    target = next(v for v in seeded.dataset.variants if v.id == target_id)
+    body = ProductVariantsOut.model_validate(
+        (await client.get(f"/products/{target.product_id}/variants")).json()
+    )
+    expected = sorted(
+        (v for v in seeded.dataset.variants if v.product_id == target.product_id),
+        key=lambda v: (v.size, v.color, v.id),
+    )
+    assert [v.id for v in body.variants] == [v.id for v in expected]
+    assert target_id in {v.id for v in body.variants}
+    assert all(v.category_code == body.category_code for v in body.variants)
+    await assert_not_found(await client.get(f"/products/{UUID(int=0)}/variants"))

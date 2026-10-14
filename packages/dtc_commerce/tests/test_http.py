@@ -32,6 +32,7 @@ async def test_404_read_is_none() -> None:
     c = client(lambda _: httpx.Response(404, json={"code": "not_found", "detail": "order"}))
     assert await c.get_order("DTC-1") is None
     assert await c.customer_orders(UUID(int=1)) == []
+    assert await c.product_variants(UUID(int=1)) is None
 
 
 @pytest.mark.parametrize(

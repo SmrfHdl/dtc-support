@@ -1,0 +1,18 @@
+# ADR-0010: NLU runs on an LLM API; up to two LLM calls per turn
+- Status: Accepted (2026-10-14). Supersedes the NLU part of ADR-0003; amends ADR-0002 (call budget).
+- Context:
+  - ADR-0003 planned the NLU on a fine-tuned Qwen2.5-1.5B + LoRA served by vLLM on a rented GPU, mainly for cost and latency at 200 RPS, when the cheapest API option was Claude Haiku 4.5 ($1 / $5 per MTok).
+  - Claude Haiku 5.5 costs $0.10 / $0.50 per MTok, about 10× less. At an assumed ~1,500 input + ~150 output tokens per NLU call, that is ~$0.0002 per call before prompt caching.
+  - Customer phrasing is very diverse. A small model fine-tuned on synthetic data generalizes poorly to it; doing better needs real traffic, a labeling and retraining loop, drift monitoring, and GPU operations (vLLM, co-location with the cluster). That is a large ongoing cost for a solo developer, and the real data only exists after launch.
+  - The label space is narrow (a handful of intents and entities), so a small model remains a viable later optimization once real, LLM-labeled traffic exists.
+  - No Claude API key is available yet; development and tests use the Groq free tier.
+- Decision:
+  - The NLU is an LLM call with structured output (`NluResult`) through pydantic-ai. The provider and model come from settings (`NLU_MODEL`, `RESPONSE_MODEL`, pydantic-ai model strings). Development: Groq free tier. Production target: Claude Haiku 5.5 with thinking off or low effort, and prompt caching on the static prompt prefix.
+  - Hard rule 2 becomes: at most **two** LLM API calls per turn on the main path, the NLU and the response. Turns answered by a template make one. The fallback agent (off the main path) has its own budget.
+  - Every NLU input/output pair is logged (PII-scrubbed) as future training data.
+  - A fine-tuned small model is an optional optimization, revisited when either holds on measured data: the NLU span keeps end-to-end p50 above 1s, or NLU cost at real traffic exceeds a budget the owner sets. It would be trained by distillation from the logged LLM outputs, against the same `NluResult` contract.
+- Consequences:
+  - Two sequential API calls make p50 < 1s tight. The latency budget must be measured on the production model; numbers from Groq (custom hardware) do not transfer. Template replies on routine turns are the main lever.
+  - Accuracy measured on a Groq model is provisional; the golden set is re-run when the production model is available.
+  - The NLU depends on the LLM provider's availability and rate limits, like the response already does. Provider fallback via `FallbackModel`.
+  - `ml/nlu/` and the vLLM deployment leave the P2 plan; they come back only through the trigger above.

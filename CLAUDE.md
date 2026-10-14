@@ -13,7 +13,7 @@ AI customer-support agent system for a DTC e-commerce brand.
 
 ## Hard rules
 1. **The LLM never decides policy.** `dtc_policy.evaluate()` (deterministic) decides. The LLM only interprets intent and phrases the reply.
-2. **Workflow-first, no supervisor LLM.** Routing is done by the NLU small model plus code. At most one LLM API call per turn on the main path.
+2. **Workflow-first, no supervisor LLM.** Routing is done by the NLU plus code. At most two LLM API calls per turn on the main path: the NLU and the response (ADR-0010).
 3. **Output guardrail:** the reply must match `PolicyDecision.code`. On mismatch: one `ModelRetry`; if still wrong, fall back to the decision template.
 4. **Side effects (RMA, refund):** idempotent via `Idempotency-Key`, written to `audit_log`, executed only after `APPROVE`.
 5. **System of record beats memory.** Facts extracted from customer text are always `verified=false` and never reach the policy engine.
@@ -28,7 +28,7 @@ AI customer-support agent system for a DTC e-commerce brand.
 | Agents | pydantic-ai, pydantic-graph (workflows), pydantic-evals (evals) |
 | Observability | Logfire (traces), Prometheus/Grafana (infra metrics, autoscaling) |
 | Data | Postgres 16 + pgvector, Redis 7 (session, cache, streams) |
-| LLM | NLU: Qwen2.5-1.5B + LoRA on vLLM (vast.ai GPU, temporary). Response: Claude Haiku 4.5. Agent path: Sonnet. Fallback via `FallbackModel` |
+| LLM | Via pydantic-ai; provider and model from settings. NLU + response: Claude Haiku 5.5 (target); dev/test: Groq free tier. Fallback agent: Claude Sonnet 5.5. Provider fallback via `FallbackModel`. Fine-tuned small NLU model: optional, see ADR-0010 |
 | Human desk | Chatwoot |
 | Frontend | React + TS widget |
 | Infra | docker compose (P0–P1), then k3s + Helm + ArgoCD (P2+) |
@@ -38,7 +38,7 @@ AI customer-support agent system for a DTC e-commerce brand.
 ```
 apps/       commerce_mock, orchestrator, gateway, memory_worker, widget
 packages/   dtc_contracts, dtc_policy, dtc_observability, dtc_datagen, dtc_commerce, dtc_store
-ml/nlu/     NLU fine-tuning
+ml/nlu/     NLU fine-tuning (optional, ADR-0010)
 evals/      datasets, scenarios, evaluators, runners
 tests/      integration, contract, e2e
 deploy/     compose, docker, vllm, helm, argocd
@@ -59,7 +59,7 @@ Conventions:
 ## Current phase: Phase 1 (PoC)
 Phase 0 (Foundation) is done (2026-10-13): all exit criteria met, see `docs/phases/roadmap.md`.
 
-Phase 1 starts with its spec, `docs/phases/phase-1.md` (to be written), before any code.
+Phase 1 spec: `docs/phases/phase-1.md` (accepted 2026-10-14). Follow its "Order of work".
 Phase 0 spec, still the reference for schema, policy, datagen, and the mock API: `docs/phases/phase-0.md`.
 
 ## Commands

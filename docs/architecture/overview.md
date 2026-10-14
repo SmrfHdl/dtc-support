@@ -8,7 +8,7 @@ Chat Widget (React/TS) ──WS──▶ Gateway (FastAPI)
                             Orchestrator (pydantic-graph)
       ┌────────────────────────┼─────────────────────────┐
       ▼                        ▼                         ▼
- NLU (vLLM, small model)  Commerce client          Escalation detector
+ NLU (LLM API, ADR-0010)  Commerce client          Escalation detector
  intent+entities+         (prefetches order        (rules + emotion score)
  emotion, JSON            in parallel with NLU)
       └──────────┬─────────────┘
@@ -75,7 +75,7 @@ Rules:
 | Step | Estimate |
 |---|---|
 | Gateway + session | 10–30ms |
-| NLU (small model) | 50–150ms, plus 50–200ms RTT to vast.ai during the temporary setup |
+| NLU (LLM API, ADR-0010) | To be measured on the production model; a fine-tuned small model would be 50–150ms |
 | Order prefetch (parallel with NLU) | 10–50ms |
 | Policy | <10ms |
 | Response: template / 1 API call | 0 / 600–1200ms |
@@ -86,7 +86,7 @@ Rules:
 |---|---|---|
 | LLM API | ~130 calls/s, ~15M input TPM | Prompt caching (static prefix), high rate-limit tier, provider fallback |
 | WebSocket | ~4,000 concurrent connections | 3–4 stateless gateway pods |
-| NLU | One GPU with continuous batching is enough | Fall back to Haiku when vast is down |
+| NLU | ~200 LLM API calls/s at peak (one per message) | Prompt caching, rate-limit tier, provider fallback; fine-tuned small model if cost demands (ADR-0010) |
 | Load testing | | Use an LLM stub. Full-scale tests run in staging |
 
 ## Observability
