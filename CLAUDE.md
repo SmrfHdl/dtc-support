@@ -56,16 +56,11 @@ Conventions:
   - `commerce`: migrations in `apps/commerce_mock/migrations`;
   - `support`: migrations in `packages/dtc_store/migrations`.
 
-## Current phase: Phase 0 (Foundation)
-Order of work:
-1. Repo, tooling, CI.
-2. `dtc_contracts` + `dtc_policy` with tests (first; no DB dependency).
-3. Schema + Alembic.
-4. Datagen.
-5. Commerce mock + fault injection + Logfire.
-6. Smoke test.
+## Current phase: Phase 1 (PoC)
+Phase 0 (Foundation) is done (2026-10-13): all exit criteria met, see `docs/phases/roadmap.md`.
 
-Detailed spec: `docs/phases/phase-0.md`.
+Phase 1 starts with its spec, `docs/phases/phase-1.md` (to be written), before any code.
+Phase 0 spec, still the reference for schema, policy, datagen, and the mock API: `docs/phases/phase-0.md`.
 
 ## Commands
 ```

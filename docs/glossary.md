@@ -152,6 +152,7 @@ Plain-language definitions for the terms used across `docs/` and `CLAUDE.md`. Gr
 | Datagen | Our script that generates fake but realistic customers/orders for testing. |
 | `datetime` naive / aware | *Naive* has no timezone (ambiguous); *aware* includes one. The policy rejects naive times. |
 | Degradation ladder | Planned steps to reduce features under failure/overload instead of crashing. |
+| Distributed tracing | One trace that follows a request across services (script → HTTP → mock → Postgres). The caller sends a `traceparent` header so the callee's spans join the same trace. |
 | Docker / docker compose | Docker packages an app with its dependencies in a *container*; compose starts several containers together locally. |
 | DST | Daylight Saving Time: clocks shift one hour in spring/autumn; a naive day count can be off by one around it. |
 | E2E test | End-to-end test: exercises the full system as a user would. |
@@ -163,7 +164,9 @@ Plain-language definitions for the terms used across `docs/` and `CLAUDE.md`. Gr
 | GET / POST / header | HTTP methods: GET reads, POST creates/acts. Headers are extra metadata on a request (e.g. `Idempotency-Key`). |
 | Gateway | Entry server that accepts chat connections, checks auth and rate limits, and passes messages on. |
 | Graph DB / HugeGraph | Database specialised in relationships (who is linked to whom). Not used. |
+| Healthcheck | A periodic probe (`GET /health`) Docker uses to know a container is up. Not traced or logged, to keep traces clean. |
 | Helm / ArgoCD / k3s / Kubernetes (k8s) | Kubernetes runs containers across servers; k3s is a light version; Helm packages app configs; ArgoCD deploys from git automatically. |
+| HTTP 409 Conflict | The request was valid but the data changed since the caller read it (e.g. the last unit was just returned). The caller should re-read and decide again. |
 | Hypothesis / property test | Library that generates many random inputs and checks a rule always holds (e.g. "never approve after 30 days"). |
 | Idempotency / `Idempotency-Key` | Sending the same request twice has the same effect as once. The key identifies the request so a retry does not create a second refund. |
 | import-linter | Tool enforcing which package may import which (e.g. `dtc_policy` imports only `dtc_contracts`). |
@@ -188,11 +191,14 @@ Plain-language definitions for the terms used across `docs/` and `CLAUDE.md`. Gr
 | Protocol (`CommerceClient`) | Python interface: lists the methods a class must have, without a concrete implementation. Lets us swap the mock for Shopify. |
 | pydantic-ai / pydantic-graph / pydantic-evals | Pydantic libraries for LLM agents / step-by-step workflows / LLM evaluations. |
 | pyright / ruff / pytest | Type checker / linter + formatter / test runner. |
+| Race condition | A bug where the result depends on which of two simultaneous requests runs first, e.g. both returning the same last unit. Prevented here with row locks (ADR-0009). |
 | Rate limit / 429 | A cap on requests per time; HTTP 429 = "too many requests". |
 | React / TS | JavaScript UI library / TypeScript (JavaScript with types). Used for the chat widget. |
 | Redis / Redis Streams | Fast in-memory store for sessions and cache; *Streams* is its message queue feature. |
 | Regression | Something that used to work breaks after a change. |
+| Request hash (`request_hash`) | SHA-256 of a write request's body, stored with its `Idempotency-Key`; the same key with a different body is rejected (`422`). |
 | Rollback | Reverting to the previous version. |
+| Row lock / `SELECT … FOR UPDATE` | Locks the selected rows until the transaction ends, so a concurrent writer on the same rows waits instead of reading stale numbers. |
 | RPS | Requests per second (here: customer messages per second). Peak target 200. |
 | RTT | Round-Trip Time: network delay to a server and back. |
 | Runbook | Step-by-step instructions for operating or fixing the system. |

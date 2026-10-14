@@ -1,0 +1,17 @@
+# ADR-0009: Commerce writes are idempotent and re-checked under row locks
+- Status: Accepted (2026-10-13)
+- Context:
+  - The policy decides on a snapshot read earlier in the turn. Between that read and the write, a second tab, a double submit, or a retry can change the numbers the decision relied on (`committed_returned_qty`, `committed_refunds_cents`).
+  - `Idempotency-Key` makes a retry of the *same* request safe, but two *different* requests can still both pass the policy on the same stale snapshot.
+  - Clients retry after timeouts, so a retry can arrive while the first request is still running.
+- Decision:
+  - `POST /returns` and `POST /refunds` run in one transaction that first takes `SELECT … FOR UPDATE` on the rows the checks depend on (the order's `order_items`; the `returns` row for refunds), then re-checks qty, refund limit, `policy_version`, and state. A violated check is `409` with a code (`qty_conflict`, `over_limit`, `policy_changed`, `not_releasable`, `already_refunded`) and writes nothing.
+  - The idempotency key is looked up **after** the lock, in the same transaction. A retry of a request still in flight waits on the lock and then replays the stored result (`200`), instead of failing checks the first request already consumed.
+  - `returns` and `refunds` store `request_hash` (SHA-256 of the parsed body). Same key + same hash replays; same key + different hash is `422 idempotency_mismatch`. Requests that lock different rows can still race on one key; the unique index on `idempotency_key` decides and the loser replays.
+  - The refund limit is checked once, on `POST /returns` with `status = approved`. `committed_refunds_cents` already contains the return's own `refund_cents`, so checking again on `POST /refunds` would count it twice. `POST /refunds` checks state, amount, and `approved_by` (required when the decision was NEED_MANAGER).
+  - The mock reads the policy YAML (`POLICY_PATH`, same `PolicyConfig`) for `auto_limit_cents` and `version`. Apps may import packages; the policy stays the single source of thresholds.
+- Consequences:
+  - Concurrent writes on one order are serialized. Fine for a single customer's order; it is not a global lock.
+  - Callers must handle `409` by rebuilding the snapshot and calling `evaluate()` again (orchestrator work in P1), and must reuse the same key when retrying after `5xx` or a timeout.
+  - Tests: two concurrent returns for the last unit, and two that together cross the limit, give exactly one `201` and one `409`; concurrent retries of one request give one `201` and one `200`. Removing `FOR UPDATE` makes the concurrency tests fail.
+  - A real commerce backend (Shopify) needs the same guarantees from its adapter, or a reservation step in `dtc_store`.
